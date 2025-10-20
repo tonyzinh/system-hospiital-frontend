@@ -1,5 +1,6 @@
 import streamlit as st
 from components.pages.patients.main import pacientes
+from components.pages.chat.main import assistente_ia as chat_assistente_ia
 
 
 def dashboard():
@@ -22,8 +23,7 @@ def operacoes():
 
 def assistente_ia():
     """Página Assistente IA"""
-    st.title("Assistente IA")
-    st.info("Assistente IA em desenvolvimento...")
+    chat_assistente_ia()
 
 
 # Configuração da página
