@@ -1,0 +1,6 @@
+streamlit
+python-dotenv
+requests
+tenacity
+pandas
+plotly
