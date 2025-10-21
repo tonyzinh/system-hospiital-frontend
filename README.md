@@ -22,7 +22,7 @@ Este é o frontend da aplicação, que se comunica com uma API backend para gere
 
 ---
 ### Link do Vídeo
-Youtube:
+Entrega da C2: https://www.youtube.com/watch?v=onTPYlFxsNk
 ___
 ## Funcionalidades
 
