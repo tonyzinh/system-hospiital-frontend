@@ -1,7 +1,7 @@
 import streamlit as st
 from components.pages.patients.main import pacientes
 from components.pages.chat.main import assistente_ia as chat_assistente_ia
-
+from components.pages.medicaments.main import medicamentos as medicamentos_page
 
 def dashboard():
     """Página Dashboard"""
@@ -11,8 +11,7 @@ def dashboard():
 
 def medicamentos():
     """Página Medicamentos"""
-    st.title("Medicamentos")
-    st.info("Página de medicamentos em desenvolvimento...")
+    medicamentos_page()
 
 
 def operacoes():
