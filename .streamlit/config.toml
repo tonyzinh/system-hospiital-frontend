@@ -1,5 +1,29 @@
+[global]
+# Configurações para melhorar performance
+developmentMode = false
+logLevel = "error"
+maxUploadSize = 200
+maxMessageSize = 200
+
 [server]
-runOnSave = true
+# Otimizações de performance
+runOnSave = false
+fileWatcherType = "none"
+port = 8501
+headless = false
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+# Reduzir coleta de dados para melhor performance
+gatherUsageStats = false
+showErrorDetails = false
+
+[client]
+# Cache e otimizações do cliente
+caching = true
+displayEnabled = true
+toolbarMode = "minimal"
 
 [theme]
 base="light"

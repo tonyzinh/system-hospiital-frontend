@@ -5,19 +5,29 @@ def handle_patient_form_submission(api, form_data):
     """
     Processar dados do formulário do modal
     """
-    if st.session_state.editing_patient:
-        # Atualizar paciente existente
-        result = api.update_patient(st.session_state.editing_patient, form_data)
-        if result:
-            st.success("Paciente atualizado com sucesso!")
-            st.session_state.editing_patient = None
-            st.rerun()
-    else:
-        # Criar novo paciente
-        result = api.create_patient(form_data)
-        if result:
-            st.success("Paciente criado com sucesso!")
-            st.rerun()
+    try:
+        if st.session_state.editing_patient:
+            # Atualizar paciente existente
+            result = api.update_patient(st.session_state.editing_patient, form_data)
+            if result:
+                st.success("Paciente atualizado com sucesso!")
+                st.session_state.editing_patient = None
+                st.session_state.show_patient_modal = False
+                # Usar timer para evitar reruns imediatos
+                st.session_state.form_submitted = True
+            else:
+                st.error("Erro ao atualizar paciente!")
+        else:
+            # Criar novo paciente
+            result = api.create_patient(form_data)
+            if result:
+                st.success("Paciente criado com sucesso!")
+                st.session_state.show_patient_modal = False
+                st.session_state.form_submitted = True
+            else:
+                st.error("Erro ao criar paciente!")
+    except Exception as e:
+        st.error(f"Erro no processamento: {e}")
 
 
 def handle_patient_deletion(api):
@@ -25,16 +35,20 @@ def handle_patient_deletion(api):
     Processar confirmação de exclusão
     """
     if st.session_state.confirm_delete and st.session_state.deleting_patient:
-        result = api.delete_patient(st.session_state.deleting_patient)
-        if result:
-            st.success("Paciente excluído com sucesso!")
-        else:
-            st.error("Erro ao excluir paciente!")
+        try:
+            result = api.delete_patient(st.session_state.deleting_patient)
+            if result:
+                st.success("Paciente excluído com sucesso!")
+            else:
+                st.error("Erro ao excluir paciente!")
+        except Exception as e:
+            st.error(f"Erro ao excluir: {e}")
 
         # Limpar estados
         st.session_state.confirm_delete = False
         st.session_state.deleting_patient = None
-        st.rerun()
+        st.session_state.show_delete_confirmation = False
+        st.session_state.deletion_completed = True
 
 
 def handle_edit_modal(api, patients):
@@ -48,13 +62,17 @@ def handle_edit_modal(api, patients):
         is_edit = False
 
         if st.session_state.editing_patient:
-            current_patient = api.get_patient(st.session_state.editing_patient)
-            is_edit = True
-            if not current_patient:
-                st.error("Paciente não encontrado!")
-                st.session_state.editing_patient = None
+            try:
+                current_patient = api.get_patient(st.session_state.editing_patient)
+                is_edit = True
+                if not current_patient:
+                    st.error("Paciente não encontrado!")
+                    st.session_state.editing_patient = None
+                    st.session_state.show_patient_modal = False
+                    return
+            except Exception as e:
+                st.error(f"Erro ao buscar paciente: {e}")
                 st.session_state.show_patient_modal = False
-                st.rerun()
                 return
 
         patient_form_modal(patient=current_patient, is_edit=is_edit)
@@ -76,4 +94,3 @@ def handle_delete_confirmation(patients):
         else:
             st.session_state.show_delete_confirmation = False
             st.session_state.deleting_patient = None
-            st.rerun()

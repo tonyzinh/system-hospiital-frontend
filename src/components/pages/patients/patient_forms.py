@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime, date
+from .utils.utils import validate_cpf, validate_email, validate_phone, calculate_age
 
 
 @st.dialog("Dados do Paciente", width="large")
@@ -94,11 +95,45 @@ def patient_form_modal(patient=None, is_edit=False):
         if cancelled:
             st.session_state.show_patient_modal = False
             st.session_state.editing_patient = None
-            st.rerun()
 
         if submitted:
-            if not full_name:
-                st.error("Nome completo é obrigatório!")
+            # Validações obrigatórias
+            errors = []
+
+            # Validar nome
+            if not full_name or len(full_name.strip()) < 2:
+                errors.append("Nome completo deve ter pelo menos 2 caracteres")
+            elif not full_name.replace(" ", "").replace("-", "").replace("'", "").isalpha():
+                errors.append("Nome deve conter apenas letras, espaços, hífens e apostrofes")
+
+            # Validar idade
+            age = calculate_age(birthdate)
+            if age < 0:
+                errors.append("Data de nascimento não pode ser no futuro")
+            elif age > 150:
+                errors.append("Data de nascimento não pode ser anterior a 150 anos")
+
+            # Validar documento (assumindo CPF se tiver 11 dígitos)
+            if document:
+                document_digits = ''.join(filter(str.isdigit, document))
+                if len(document_digits) == 11:  # Parece ser CPF
+                    if not validate_cpf(document):
+                        errors.append("CPF inválido")
+                elif len(document.strip()) < 5:
+                    errors.append("Documento deve ter pelo menos 5 caracteres")
+
+            # Validar email
+            if not validate_email(email):
+                errors.append("Email deve ter formato válido (exemplo@dominio.com)")
+
+            # Validar telefone
+            if not validate_phone(phone):
+                errors.append("Telefone deve ter formato válido (10 ou 11 dígitos)")
+
+            # Exibir erros se houver
+            if errors:
+                for error in errors:
+                    st.error(f"❌ {error}")
                 return None
 
             contact_data = {}
@@ -110,17 +145,16 @@ def patient_form_modal(patient=None, is_edit=False):
                 contact_data["address"] = address
 
             form_data = {
-                "full_name": full_name,
+                "full_name": full_name.strip(),
                 "birthdate": birthdate.strftime("%Y-%m-%d"),
                 "sex": sex,
-                "document": document,
+                "document": document.strip() if document else "",
                 "contact_json": contact_data,
             }
 
             # Armazenar dados no session_state para processamento na página principal
             st.session_state.patient_form_data = form_data
             st.session_state.show_patient_modal = False
-            st.rerun()
 
     return None
 
@@ -141,7 +175,6 @@ def delete_patient_modal(patient_name):
         if st.button("Cancelar", use_container_width=True, key="cancel_delete"):
             st.session_state.show_delete_confirmation = False
             st.session_state.deleting_patient = None
-            st.rerun()
 
     with col2:
         if st.button(
@@ -152,7 +185,6 @@ def delete_patient_modal(patient_name):
         ):
             st.session_state.confirm_delete = True
             st.session_state.show_delete_confirmation = False
-            st.rerun()
 
 
 def render_patient_form(patient=None, form_key="patient_form"):
@@ -236,8 +268,43 @@ def render_patient_form(patient=None, form_key="patient_form"):
         )
 
         if submitted:
-            if not full_name:
-                st.error("Nome completo é obrigatório!")
+            # Validações obrigatórias
+            errors = []
+
+            # Validar nome
+            if not full_name or len(full_name.strip()) < 2:
+                errors.append("Nome completo deve ter pelo menos 2 caracteres")
+            elif not full_name.replace(" ", "").replace("-", "").replace("'", "").isalpha():
+                errors.append("Nome deve conter apenas letras, espaços, hífens e apostrofes")
+
+            # Validar idade
+            age = calculate_age(birthdate)
+            if age < 0:
+                errors.append("Data de nascimento não pode ser no futuro")
+            elif age > 150:
+                errors.append("Data de nascimento não pode ser anterior a 150 anos")
+
+            # Validar documento (assumindo CPF se tiver 11 dígitos)
+            if document:
+                document_digits = ''.join(filter(str.isdigit, document))
+                if len(document_digits) == 11:  # Parece ser CPF
+                    if not validate_cpf(document):
+                        errors.append("CPF inválido")
+                elif len(document.strip()) < 5:
+                    errors.append("Documento deve ter pelo menos 5 caracteres")
+
+            # Validar email
+            if not validate_email(email):
+                errors.append("Email deve ter formato válido (exemplo@dominio.com)")
+
+            # Validar telefone
+            if not validate_phone(phone):
+                errors.append("Telefone deve ter formato válido (10 ou 11 dígitos)")
+
+            # Exibir erros se houver
+            if errors:
+                for error in errors:
+                    st.error(f"❌ {error}")
                 return None
 
             contact_data = {}
@@ -249,10 +316,10 @@ def render_patient_form(patient=None, form_key="patient_form"):
                 contact_data["address"] = address
 
             return {
-                "full_name": full_name,
+                "full_name": full_name.strip(),
                 "birthdate": birthdate.strftime("%Y-%m-%d"),
                 "sex": sex,
-                "document": document,
+                "document": document.strip() if document else "",
                 "contact_json": contact_data,
             }
     return None

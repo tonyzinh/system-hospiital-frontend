@@ -34,14 +34,14 @@ def pacientes():
         )
 
     with col2:
-        if st.button("Novo Paciente", use_container_width=True):
+        if st.button("Novo Paciente", use_container_width=True, key="new_patient_btn"):
             st.session_state.editing_patient = None
             st.session_state.show_patient_modal = True
-            st.rerun()
 
     with col3:
-        if st.button("Atualizar", use_container_width=True):
-            st.rerun()
+        if st.button("Atualizar", use_container_width=True, key="refresh_btn"):
+            # Force cache refresh
+            st.cache_data.clear()
 
     # Buscar e processar pacientes
     raw_patients = api.get_patients()
