@@ -6,6 +6,7 @@ from components.config import API_BASE_URL
 
 class AIAPIError(Exception):
     """Exceção customizada para erros da API de IA"""
+
     pass
 
 
@@ -14,7 +15,8 @@ class AIService:
 
     def __init__(self):
         self.base_url = API_BASE_URL
-        self.timeout = 120  # 2 minutos de timeout
+        self.timeout = 90  # 90 segundos máximo - prioriza velocidade
+        self._original_timeout = 90  # Backup do timeout original
 
     def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -33,11 +35,19 @@ class AIService:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
         try:
+            # Usar timeout duplo: (conexão, leitura)
+            timeout_tuple = (
+                30,
+                self.timeout,
+            )  # 30s para conexão, self.timeout para leitura
             response = requests.post(
                 url,
                 json=data,
-                timeout=self.timeout,
-                headers={'Content-Type': 'application/json'}
+                timeout=timeout_tuple,
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Accept": "application/json",
+                },
             )
 
             if response.status_code == 200:
@@ -53,20 +63,50 @@ class AIService:
         except requests.exceptions.RequestException as e:
             raise AIAPIError(f"Erro na requisição: {str(e)}")
 
-    def check_health(self) -> bool:
+    def check_health(self) -> Dict[str, Any]:
         """
         Verifica se o serviço de IA está funcionando
 
         Returns:
-            True se o serviço estiver funcionando, False caso contrário
+            Dict com informações detalhadas do status
         """
         try:
             url = f"{self.base_url}/ai/health"
-            response = requests.get(url, timeout=10)
+            # Timeout mais curto para health check (conexão, leitura)
+            timeout_tuple = (5, 15)  # 5s conexão, 15s leitura
+            response = requests.get(url, timeout=timeout_tuple)
 
             if response.status_code == 200:
                 data = response.json()
-                return data.get('status') == 'healthy'
+                return {
+                    "healthy": data.get("status") == "healthy",
+                    "status": data.get("status"),
+                    "details": data,
+                }
+            return {
+                "healthy": False,
+                "status": "unhealthy",
+                "error": f"HTTP {response.status_code}",
+            }
+
+        except Exception as e:
+            return {"healthy": False, "status": "error", "error": str(e)}
+
+    def warmup_ollama(self) -> bool:
+        """
+        Força o pré-aquecimento do Ollama
+
+        Returns:
+            True se o warmup foi bem sucedido
+        """
+        try:
+            url = f"{self.base_url}/ai/health"
+            timeout_tuple = (5, 30)  # 30s para warmup
+            response = requests.post(url, timeout=timeout_tuple)
+
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("status") == "ready"
             return False
 
         except Exception:
@@ -74,7 +114,7 @@ class AIService:
 
     def simple_question(self, question: str, model: Optional[str] = None) -> str:
         """
-        Faz uma pergunta simples para a IA
+        Faz uma pergunta simples para a IA com sistema de fallback
 
         Args:
             question: Pergunta a ser feita
@@ -87,8 +127,37 @@ class AIService:
         if model:
             data["model"] = model
 
-        response = self._make_request("ai/answer", data)
-        return response.get("answer", "")
+        # Primeiro, tenta com timeout menor para perguntas rápidas
+        try:
+            # Salva o timeout original
+            original_timeout = self.timeout
+
+            # Para perguntas curtas, usa timeout menor
+            if len(question) < 50:
+                self.timeout = 60  # 1 minuto para perguntas curtas
+
+            response = self._make_request("ai/answer", data)
+            return response.get("answer", "")
+
+        except AIAPIError as e:
+            # Restaura timeout original
+            self.timeout = original_timeout
+
+            # Se foi timeout e a pergunta é mais longa, tenta novamente
+            if "timeout" in str(e).lower() and len(question) >= 50:
+                try:
+                    response = self._make_request("ai/answer", data)
+                    return response.get("answer", "")
+                except AIAPIError:
+                    # Se ainda falhou, sugere usar advanced
+                    raise AIAPIError(
+                        "Pergunta complexa detectada. Tente reformular de forma mais simples ou use o modo avançado."
+                    )
+
+            raise e
+        finally:
+            # Sempre restaura o timeout original
+            self.timeout = getattr(self, "_original_timeout", 300)
 
     def advanced_question(self, question: str, model: Optional[str] = None) -> str:
         """
@@ -108,8 +177,9 @@ class AIService:
         response = self._make_request("ai/answer-advanced", data)
         return response.get("answer", "")
 
-    def chat_with_history(self, question: str, history: List[Dict[str, str]],
-                         model: Optional[str] = None) -> str:
+    def chat_with_history(
+        self, question: str, history: List[Dict[str, str]], model: Optional[str] = None
+    ) -> str:
         """
         Faz uma pergunta considerando o histórico da conversa
 

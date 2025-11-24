@@ -12,9 +12,6 @@ ITEMS_PER_PAGE = 10
 HTTP_SUCCESS_CODES = [200, 201, 204]
 
 # Configurações do Chat IA
-AI_TIMEOUT = 120  # segundos
+AI_TIMEOUT = 300  # segundos (5 minutos)
 AI_MAX_RETRIES = 3
-AI_MODELS = {
-    "default": "llama3.1",
-    "advanced": "llama3.1"
-}
+AI_MODELS = {"default": "llama3.1", "advanced": "llama3.1"}
